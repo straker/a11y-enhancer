@@ -1,0 +1,4 @@
+/* visually hide an element with aria-hidden to match the aria state */
+[aria-hidden="true"] {
+  display: none !important;
+}

@@ -1,0 +1,20 @@
+{
+  "name": "a11y-components",
+  "version": "1.0.0",
+  "description": "A JavaScript library for making widgets/components accessible",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "a11y",
+    "a11y",
+    "accessibility"
+  ],
+  "author": "Steven Lambert <steven@sklambert.com> (http://sklambert.com/)",
+  "license": "MIT",
+  "devDependencies": {
+    "browser-sync": "^2.17.6",
+    "gulp": "^3.9.1"
+  }
+}
