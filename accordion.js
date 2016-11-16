@@ -26,16 +26,29 @@ window.allyComponents = (function(allyComponents) {
    *    accordion-focused - fired when an accordion heading is selected
    *    accordion-blurred - fired when an accordion heading is unselected
    *
-   * @example
+   * Example
+   *
+   *  <div>
+   *
+   *    <h3 role="tab">Heading 1</h3>
+   *    <div role="tabpanel">Lorium ipsum dolores.</div>
+   *
+   *    <h3 role="tab">Heading 2</h3>
+   *    <div role="tabpanel">Lorium ipsum dolores.</div>
+   *
+   *  </div>
+   *
+   * Will be upgraded to
+   *
    *  <div role="tablist" aria-multiselectable="true">
    *
-   *    <h3 id="tab-heading0" role="tab" aria-expanded="true" aria-selected="true" tabindex="0">Heading 1</h3>
-   *    <div role="tabpanel" aria-labelledby="tab-heading0" aria-hidden="false">
+   *    <h3 id="tab-heading1" role="tab" aria-expanded="true" aria-selected="true" tabindex="0">Heading 1</h3>
+   *    <div role="tabpanel" aria-labelledby="tab-heading1" aria-hidden="false">
    *      Lorium ipsum dolores.
    *    </div>
    *
-   *    <h3 id="tab-heading1" role="tab" aria-expanded="false" aria-selected="false" tabindex="-1">Heading 2</h3>
-   *    <div role="tabpanel" aria-labelledby="tab-heading1" aria-hidden="true">
+   *    <h3 id="tab-heading2" role="tab" aria-expanded="false" aria-selected="false" tabindex="-1">Heading 2</h3>
+   *    <div role="tabpanel" aria-labelledby="tab-heading2" aria-hidden="true">
    *      Lorium ipsum dolores.
    *    </div>
    *
