@@ -49,6 +49,7 @@
    * @see https://www.w3.org/TR/wai-aria-practices-1.1/#accordion
    *
    * @param {HTMLElement} element - Container element of the accordion.
+   * @param {ShadowRoot} [shadowRoot=element] - Shadow root element if using a custom element with shadow root. Defaults to the container element.
    *
    * For this to work, each accordion heading must be given the role="tab" and each
    * accordion menu must be given the role="tabpanel". From this, the code will
@@ -96,9 +97,12 @@
    *
    *  </div>
    */
-  function accordion(element) {
+  function accordion(element, shadowRoot) {
     // ensure we are a DOM element and have proper element functions
     if (!element instanceof HTMLElement) return;
+
+    // if no shadowRoot is passed default to the container element
+    shadowRoot = shadowRoot instanceof ShadowRoot ? shadowRoot : element;
 
     // states
     var currentTabIndex = 0;
@@ -118,7 +122,7 @@
 
     // set role and state for each tab
     // NOTE: babel does not transpile Array.from so we'll use the es5 version
-    var tabs = [].slice.call(element.querySelectorAll('[role="tab"]'));
+    var tabs = [].slice.call(shadowRoot.querySelectorAll('[role="tab"]'));
     for (var i = 0, tab$$1; tab$$1 = tabs[i]; i++) {
       tab$$1.setAttribute('aria-expanded', options.expanded ? true : false);
       tab$$1.setAttribute('aria-selected', i === 0 ? true : false);
@@ -128,7 +132,7 @@
     }
 
     // set role and state for each tabpanel
-    var panels = element.querySelectorAll('[role="tabpanel"]');
+    var panels = shadowRoot.querySelectorAll('[role="tabpanel"]');
     for (var _i = 0, panel; panel = panels[_i]; _i++) {
       panel.setAttribute('aria-labelledby', TAB_ID + (uid + _i));
       panel.setAttribute('aria-hidden', options.expanded ? false : true);
@@ -140,7 +144,7 @@
     lastTabIndex = tabs.length - 1;
 
     // keyboard events
-    element.addEventListener('keydown', function (e) {
+    shadowRoot.addEventListener('keydown', function (e) {
 
       switch (e.which) {
         // left/up arrow - move focus to previous heading when heading is selected
@@ -209,7 +213,7 @@
     }, true);
 
     // mouse events
-    element.addEventListener('mousedown', function (e) {
+    shadowRoot.addEventListener('mousedown', function (e) {
 
       // update the currently focused item and toggle the panel when heading is selected
       if (e.target.getAttribute('role') === 'tab') {
@@ -231,7 +235,7 @@
       currentTab.setAttribute('tabindex', -1);
 
       event = new CustomEvent('accordion-blurred', { detail: currentTab });
-      element.dispatchEvent(event);
+      shadowRoot.dispatchEvent(event);
 
       currentTab = tabs[currentTabIndex];
       currentTab.setAttribute('aria-selected', true);
@@ -239,22 +243,22 @@
       currentTab.focus();
 
       event = new CustomEvent('accordion-focused', { detail: currentTab });
-      element.dispatchEvent(event);
+      shadowRoot.dispatchEvent(event);
     }
 
     /**
      * Open or close the currently selected tab panel.
      */
     function toggleTabPanel(tab$$1) {
-      var panel = element.querySelector('#' + tab$$1.getAttribute('aria-controls'));
+      var panel = shadowRoot.querySelector('#' + tab$$1.getAttribute('aria-controls'));
       var event = void 0;
 
       // open panel
       if (tab$$1.getAttribute('aria-expanded') === 'false') {
 
         // close other open tab before opening this one
-        if (!options.multiple && element.querySelector('[aria-expanded="true"]')) {
-          var openPanel = element.querySelector('[aria-expanded="true"]');
+        if (!options.multiple && shadowRoot.querySelector('[aria-expanded="true"]')) {
+          var openPanel = shadowRoot.querySelector('[aria-expanded="true"]');
           toggleTabPanel(openPanel);
         }
 
@@ -271,7 +275,7 @@
           event = new CustomEvent('accordion-collapsed', { detail: tab$$1 });
         }
 
-      element.dispatchEvent(event);
+      shadowRoot.dispatchEvent(event);
     }
   }
 
