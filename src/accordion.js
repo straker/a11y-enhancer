@@ -1,3 +1,4 @@
+import CustomEvent from './custom-event';
 import * as KEYS from './key-codes';
 
 const TAB_ID = 'tab-heading';
@@ -78,7 +79,8 @@ function accordion(element) {
   element.setAttribute('aria-multiselectable', options.multiple);
 
   // set role and state for each tab
-  let tabs = Array.from(element.querySelectorAll('[role="tab"]'));
+  // NOTE: babel does not transpile Array.from so we'll use the es5 version
+  let tabs = [].slice.call(element.querySelectorAll('[role="tab"]'));
   for (let i = 0, tab; (tab = tabs[i]); i++) {
     tab.setAttribute('aria-expanded', (options.expanded ? true : false));
     tab.setAttribute('aria-selected', (i === 0 ? true : false));

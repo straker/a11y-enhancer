@@ -25,7 +25,34 @@ gulp.task('build', function() {
       moduleName: 'a11yEnhancer',
     }))
     .pipe(babel({
-      presets: ['es2015']
+      // babel automatically converts the typeof operator into a function to deal
+      // with the singular use case of `typeof Symbol() === "symbol"`, even if
+      // the code never uses the typeof operator for Symbols...
+      // as far as I could find, there is no way to disable a single plugin when
+      // using the es2015 preset, so instead we'll have to list all of the plugins
+      // manually in the same order as the preset and exclude plugins I don't want:
+      // typeof and module plugins (handled by rollup)
+      plugins: [
+        'babel-plugin-transform-es2015-template-literals',
+        'babel-plugin-transform-es2015-literals',
+        'babel-plugin-transform-es2015-function-name',
+        'babel-plugin-transform-es2015-arrow-functions',
+        'babel-plugin-transform-es2015-block-scoped-functions',
+        'babel-plugin-transform-es2015-classes',
+        'babel-plugin-transform-es2015-object-super',
+        'babel-plugin-transform-es2015-shorthand-properties',
+        'babel-plugin-transform-es2015-duplicate-keys',
+        'babel-plugin-transform-es2015-computed-properties',
+        'babel-plugin-transform-es2015-for-of',
+        'babel-plugin-transform-es2015-sticky-regex',
+        'babel-plugin-transform-es2015-unicode-regex',
+        'babel-plugin-check-es2015-constants',
+        'babel-plugin-transform-es2015-spread',
+        'babel-plugin-transform-es2015-parameters',
+        'babel-plugin-transform-es2015-destructuring',
+        'babel-plugin-transform-es2015-block-scoping',
+        'babel-plugin-transform-regenerator',
+      ]
     }))
     .pipe(gulp.dest('build'))
 

@@ -1,4 +1,6 @@
-// define commonly used keycodes for interacting with components
+/**
+ * Define commonly used keycodes for interacting with components.
+ */
 export const tab = 9;
 export const enter = 13;
 export const esc = 27;

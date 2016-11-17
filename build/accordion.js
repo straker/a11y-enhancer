@@ -1,13 +1,30 @@
-'use strict';
-
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
 (function (global, factory) {
-  (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? factory(exports) : typeof define === 'function' && define.amd ? define(['exports'], factory) : factory(global.a11yEnhancer = global.a11yEnhancer || {});
-})(undefined, function (exports) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) : typeof define === 'function' && define.amd ? define(['exports'], factory) : factory(global.a11yEnhancer = global.a11yEnhancer || {});
+})(this, function (exports) {
   'use strict';
 
-  // define commonly used keycodes for interacting with components
+  /**
+   * CustomEvent polyfill.
+   */
+
+  var CustomEvent = function () {
+    if (typeof window.CustomEvent === "function") return window.CustomEvent;
+
+    function CustomEvent(event, params) {
+      params = params || { bubbles: false, cancelable: false, detail: undefined };
+      var evt = document.createEvent('CustomEvent');
+      evt.initCustomEvent(event, params.bubbles, params.cancelable, params.detail);
+      return evt;
+    }
+
+    CustomEvent.prototype = window.Event.prototype;
+
+    return CustomEvent;
+  }();
+
+  /**
+   * Define commonly used keycodes for interacting with components.
+   */
 
   var enter = 13;
 
@@ -99,7 +116,8 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     element.setAttribute('aria-multiselectable', options.multiple);
 
     // set role and state for each tab
-    var tabs = Array.from(element.querySelectorAll('[role="tab"]'));
+    // NOTE: babel does not transpile Array.from so we'll use the es5 version
+    var tabs = [].slice.call(element.querySelectorAll('[role="tab"]'));
     for (var i = 0, tab$$1; tab$$1 = tabs[i]; i++) {
       tab$$1.setAttribute('aria-expanded', options.expanded ? true : false);
       tab$$1.setAttribute('aria-selected', i === 0 ? true : false);
