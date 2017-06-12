@@ -4,6 +4,7 @@ var rollup = require('gulp-rollup');
 var concat = require('gulp-concat-util');
 var rename = require("gulp-rename");
 var browserSync = require('browser-sync').create();
+var Server = require('karma').Server;
 
 gulp.task('connect', function() {
   browserSync.init({
@@ -16,11 +17,11 @@ gulp.task('connect', function() {
 });
 
 gulp.task('build', function() {
-  return gulp.src(['src/*.js'])
+  return gulp.src('src/*.js')
 
     // create js import file
     .pipe(rollup({
-      entry: ['src/accordion.js'],
+      entry: ['src/accordion.js', 'src/combobox.js', 'src/dialog.js'],
       format: 'umd',
       moduleName: 'a11yEnhancer',
     }))
@@ -63,6 +64,22 @@ gulp.task('build', function() {
     .pipe(concat.header('<script>\n'))
     .pipe(concat.footer('\n</script>'))
     .pipe(gulp.dest('.'));
+});
+
+gulp.task('test', function(done) {
+  new Server({
+    basePath: '',
+    frameworks: ['mocha', 'chai'],
+    files: [
+      'build/*.js',
+      'helpers.js',
+      'test/*.js',
+
+      // fixtures
+      { pattern: 'test/fixtures/*.html', watched: true, served: true, included: false }
+    ],
+    browsers: ['Chrome']
+  }, done).start();
 });
 
 gulp.task('default', ['connect']);

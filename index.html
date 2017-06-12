@@ -4,6 +4,8 @@
   <title>Test</title>
   <style>[aria-hidden="true"] { display: none; }</style>
   <script src="build/accordion.js"></script>
+  <script src="build/combobox.js"></script>
+  <script src="build/dialog.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/0.7.23/webcomponents.min.js"></script>
   <link rel="import" href="./custom-accordion.html">
 </head>
@@ -13,5 +15,36 @@
   <custom-accordion id="accordion">
   </custom-accordion>
 
+  <div id="combobox">
+    <input role="combobox" aria-label="search">
+    <button>▼</button>
+    <ul role="listbox">
+      <li>One</li>
+      <li>Two</li>
+      <li>Three</li>
+      <li>Four</li>
+      <li>Five</li>
+    </ul>
+  </div>
+
+  <div id="dialog" role="dialog">
+    <h1>Dialog title</h1>
+    <p>Dialog content lorium ipsum</p>
+    <button onclick="closeDialog()">Close</button>
+    <button autofocus>Confirm</button>
+  </div>
+
+  <button onclick="openDialog()">Open dialog</button>
+
+  <script>
+  a11yEnhancer.dialog(dialog);
+  function openDialog() {
+    dialog.show();
+  }
+
+  function closeDialog() {
+    dialog.close();
+  }
+  </script>
 </body>
 </html>

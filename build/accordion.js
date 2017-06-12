@@ -37,8 +37,8 @@
   var right = 39;
   var down = 40;
 
-  var TAB_ID = 'tab-heading';
-  var PANEL_ID = 'tab-panel';
+  var TAB_ID = 'ae_accordion-heading';
+  var PANEL_ID = 'ae_accordion-panel';
 
   // unique id for each tab/tabpanel pair
   var uid = 1;
@@ -57,16 +57,16 @@
    *
    * Optional attributes on container element
    *
-   *    wrap-focus - wraps the accordion roving tabindex when on the first/last heading
    *    expanded - defaults all accordions to be expanded
    *    multiple - multiple menus can be expanded
+   *    wrap-focus - wraps the accordion roving tabindex when on the first/last heading
    *
    * Events will pass the target element as the detail property of the event
    *
    *    accordion-expanded - fired when an accordion panel is expanded
    *    accordion-collapsed - fired when an accordion panel is collapsed
-   *    accordion-focused - fired when an accordion heading is selected
-   *    accordion-blurred - fired when an accordion heading is unselected
+   *    accordion-focused - fired when an accordion heading is focused
+   *    accordion-blurred - fired when an accordion heading is blurred
    *
    * Example
    *
@@ -84,13 +84,13 @@
    *
    *  <div role="tablist" aria-multiselectable="true">
    *
-   *    <h3 id="tab-heading1" role="tab" aria-expanded="true" aria-selected="true" tabindex="0">Heading 1</h3>
-   *    <div role="tabpanel" aria-labelledby="tab-heading1" aria-hidden="false">
+   *    <h3 id="ae_accordion-heading1" role="tab" aria-expanded="true" aria-selected="true" aria-controls="ae_accordion-panel1" tabindex="0">Heading 1</h3>
+   *    <div id="ae_accordion-panel1" role="tabpanel" aria-labelledby="ae_accordion-heading1" aria-hidden="false">
    *      Lorium ipsum dolores.
    *    </div>
    *
-   *    <h3 id="tab-heading2" role="tab" aria-expanded="false" aria-selected="false" tabindex="-1">Heading 2</h3>
-   *    <div role="tabpanel" aria-labelledby="tab-heading2" aria-hidden="true">
+   *    <h3 id="ae_accordion-heading2" role="tab" aria-expanded="false" aria-selected="false" aria-controls="ae_accordion-panel2" tabindex="-1">Heading 2</h3>
+   *    <div id="ae_accordion-panel2" role="tabpanel" aria-labelledby="ae_accordion-heading2" aria-hidden="true">
    *      Lorium ipsum dolores.
    *    </div>
    *
@@ -101,7 +101,9 @@
     if (!element instanceof HTMLElement) return;
 
     // if no shadowRoot is passed default to the container element
-    shadowRoot = shadowRoot instanceof ShadowRoot ? shadowRoot : element;
+    // using toString() is the only safe way to check for a shadow root node when
+    // the polyfill is not loaded
+    var root = shadowRoot && shadowRoot.toString() === '[object ShadowRoot]' ? shadowRoot : element;
 
     // states
     var currentTabIndex = 0;
@@ -109,32 +111,31 @@
         lastTabIndex = void 0;
 
     // options
-    var options = {
-      wrapFocus: element.hasAttribute('wrap-focus'),
+    var OPTIONS = {
       expanded: element.hasAttribute('expanded'),
-      multiple: element.hasAttribute('multiple')
+      multiple: element.hasAttribute('multiple'),
+      wrapFocus: element.hasAttribute('wrap-focus')
     };
 
     // add role and state for the parent
+    element.setAttribute('aria-multiselectable', OPTIONS.multiple);
     element.setAttribute('role', 'tablist');
-    element.setAttribute('aria-multiselectable', options.multiple);
 
     // set role and state for each tab
-    // NOTE: babel does not transpile Array.from so we'll use the es5 version
-    var tabs = [].slice.call(shadowRoot.querySelectorAll('[role="tab"]'));
+    var tabs = Array.from(root.querySelectorAll('[role="tab"]'));
     for (var i = 0, tab$$1; tab$$1 = tabs[i]; i++) {
-      tab$$1.setAttribute('aria-expanded', options.expanded ? true : false);
-      tab$$1.setAttribute('aria-selected', i === 0 ? true : false);
       tab$$1.setAttribute('aria-controls', PANEL_ID + (uid + i));
-      tab$$1.setAttribute('tabindex', i === 0 ? 0 : -1);
+      tab$$1.setAttribute('aria-expanded', OPTIONS.expanded ? true : false);
+      tab$$1.setAttribute('aria-selected', i === 0 ? true : false);
       tab$$1.setAttribute('id', TAB_ID + (uid + i));
+      tab$$1.setAttribute('tabindex', i === 0 ? 0 : -1);
     }
 
     // set role and state for each tabpanel
-    var panels = shadowRoot.querySelectorAll('[role="tabpanel"]');
+    var panels = root.querySelectorAll('[role="tabpanel"]');
     for (var _i = 0, panel; panel = panels[_i]; _i++) {
+      panel.setAttribute('aria-hidden', OPTIONS.expanded ? false : true);
       panel.setAttribute('aria-labelledby', TAB_ID + (uid + _i));
-      panel.setAttribute('aria-hidden', options.expanded ? false : true);
       panel.setAttribute('id', PANEL_ID + (uid + _i));
     }
 
@@ -143,76 +144,68 @@
     lastTabIndex = tabs.length - 1;
 
     // keyboard events
-    shadowRoot.addEventListener('keydown', function (e) {
+    root.addEventListener('keydown', function (e) {
 
-      switch (e.which) {
-        // left/up arrow - move focus to previous heading when heading is selected
-        case left:
-        case up:
-          if (e.target.getAttribute('role') === 'tab') {
+      // all accordion keyboard interaction can only happen when a heading is selected
+      if (e.target.getAttribute('role') === 'tab') {
+        switch (e.which) {
+
+          // left/up arrow - move focus to previous heading
+          case left:
+          case up:
+            e.preventDefault();
 
             // optionally wrap focus
-            if (options.wrapFocus) {
+            if (OPTIONS.wrapFocus) {
               currentTabIndex = currentTabIndex === 0 ? lastTabIndex : currentTabIndex - 1;
             } else {
               currentTabIndex = currentTabIndex === 0 ? 0 : currentTabIndex - 1;
             }
 
             updateFocusState();
-          }
+            break;
 
-          break;
-
-        // right/down arrow - move focus to next heading when heading is selected
-        case right:
-        case down:
-          if (e.target.getAttribute('role') === 'tab') {
+          // right/down arrow - move focus to next heading
+          case right:
+          case down:
+            e.preventDefault();
 
             // optionally wrap focus
-            if (options.wrapFocus) {
+            if (OPTIONS.wrapFocus) {
               currentTabIndex = currentTabIndex === lastTabIndex ? 0 : currentTabIndex + 1;
             } else {
               currentTabIndex = currentTabIndex === lastTabIndex ? lastTabIndex : currentTabIndex + 1;
             }
 
             updateFocusState();
-          }
+            break;
 
-          break;
-
-        // end - move focus to last heading when heading is selected
-        case end:
-          if (e.target.getAttribute('role') === 'tab') {
+          // end - move focus to last heading
+          case end:
+            e.preventDefault();
             currentTabIndex = lastTabIndex;
-
             updateFocusState();
-          }
 
-          break;
+            break;
 
-        // home - move focus to first heading when heading is selected
-        case home:
-          if (e.target.getAttribute('role') === 'tab') {
+          // home - move focus to first heading
+          case home:
             currentTabIndex = 0;
-
             updateFocusState();
-          }
+            break;
 
-          break;
-
-        // enter/space - toggle accordion expansion when heading is selected
-        case enter:
-        case space:
-          if (e.target.getAttribute('role') === 'tab') {
+          // enter/space - toggle accordion expansion
+          case enter:
+          case space:
+            e.preventDefault();
             toggleTabPanel(currentTab);
-          }
-
-          break;
+            break;
+        }
       }
     }, true);
 
     // mouse events
-    shadowRoot.addEventListener('mousedown', function (e) {
+    root.addEventListener('mousedown', function (e) {
 
       // update the currently focused item and toggle the panel when heading is selected
       if (e.target.getAttribute('role') === 'tab') {
@@ -233,48 +226,48 @@
       currentTab.setAttribute('aria-selected', false);
       currentTab.setAttribute('tabindex', -1);
 
-      event = new CustomEvent('accordion-blurred', { detail: currentTab });
-      shadowRoot.dispatchEvent(event);
+      event = new CustomEvent('accordion-blurred', { bubbles: true, detail: currentTab });
+      root.dispatchEvent(event);
 
       currentTab = tabs[currentTabIndex];
       currentTab.setAttribute('aria-selected', true);
       currentTab.setAttribute('tabindex', 0);
       currentTab.focus();
 
-      event = new CustomEvent('accordion-focused', { detail: currentTab });
-      shadowRoot.dispatchEvent(event);
+      event = new CustomEvent('accordion-focused', { bubbles: true, detail: currentTab });
+      root.dispatchEvent(event);
     }
 
     /**
      * Open or close the currently selected tab panel.
      */
     function toggleTabPanel(tab$$1) {
-      var panel = shadowRoot.querySelector('#' + tab$$1.getAttribute('aria-controls'));
+      var panel = root.querySelector('#' + tab$$1.getAttribute('aria-controls'));
       var event = void 0;
 
       // open panel
       if (tab$$1.getAttribute('aria-expanded') === 'false') {
 
         // close other open tab before opening this one
-        if (!options.multiple && shadowRoot.querySelector('[aria-expanded="true"]')) {
-          var openPanel = shadowRoot.querySelector('[aria-expanded="true"]');
+        if (!OPTIONS.multiple && root.querySelector('[aria-expanded="true"]')) {
+          var openPanel = root.querySelector('[aria-expanded="true"]');
           toggleTabPanel(openPanel);
         }
 
         tab$$1.setAttribute('aria-expanded', true);
         panel.setAttribute('aria-hidden', false);
 
-        event = new CustomEvent('accordion-expanded', { detail: tab$$1 });
+        event = new CustomEvent('accordion-expanded', { bubbles: true, detail: tab$$1 });
       }
       // close panel
       else {
           tab$$1.setAttribute('aria-expanded', false);
           panel.setAttribute('aria-hidden', true);
 
-          event = new CustomEvent('accordion-collapsed', { detail: tab$$1 });
+          event = new CustomEvent('accordion-collapsed', { bubbles: true, detail: tab$$1 });
         }
 
-      shadowRoot.dispatchEvent(event);
+      root.dispatchEvent(event);
     }
   }
 

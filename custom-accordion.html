@@ -1,5 +1,10 @@
 <template id="custom-accordion-template">
-  <style>[aria-hidden="true"] { display: none; }</style>
+  <style>
+    [aria-hidden="true"] { display: none; }
+    :host(:focus) {
+      outline: none;
+    }
+  </style>
   <h3 role="tab" >Heading 1</h3>
   <div role="tabpanel">
     <input type="text">
@@ -35,17 +40,24 @@
 (function() {
   var doc = (document._currentScript || document.currentScript).ownerDocument;
   var template = doc.querySelector('#custom-accordion-template');
-  var proto = Object.create(HTMLElement.prototype);
+  var shadowRoot;
 
-  proto.createdCallback = function() {
-    var root = this.createShadowRoot();
-    var temp = document.importNode(template.content, true);
-    root.appendChild(temp);
-    a11yEnhancer.accordion(this, root);
-  }
+  customElements.define('custom-accordion', class extends HTMLElement {
+    constructor() {
+      super();
 
-  document.registerElement('custom-accordion', {
-    prototype: proto
+      shadowRoot = this.attachShadow({
+        mode: 'open',
+        // delegatesFocus: true
+      });
+    }
+
+    connectedCallback() {
+      const temp = document.importNode(template.content, true);
+      shadowRoot.appendChild(temp);
+
+      a11yEnhancer.accordion(this, shadowRoot);
+    }
   });
 })();
 </script>
