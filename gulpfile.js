@@ -71,6 +71,7 @@ gulp.task('test', function(done) {
     basePath: '',
     frameworks: ['mocha', 'chai'],
     files: [
+      'node_modules/wicg-inert/dist/inert.min.js',
       'build/*.js',
       'helpers.js',
       'test/*.js',

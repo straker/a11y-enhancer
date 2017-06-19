@@ -8,23 +8,25 @@ module.exports = function(config) {
     autoWatch: false,
     frameworks: ['mocha', 'chai'],
     files: [
+      'node_modules/wicg-inert/dist/inert.min.js',
       'build/*.js',
+      'helpers.js',
       'test/*.js',
 
       // fixtures
       { pattern: 'test/fixtures/*.html', watched: true, served: true, included: false }
     ],
     browsers: ['PhantomJS'],
-    // reporters: ['progress', 'coverage'],
-    // preprocessors: {
-    //   'src/*.js': ['coverage']
-    // },
-    // coverageReporter: {
-    //   dir : 'coverage/',
-    //   reporters: [
-    //     {type: 'lcov', subdir: '.'},
-    //     {type: 'text-summary'}
-    //   ]
-    // }
+    reporters: ['progress', 'coverage'],
+    preprocessors: {
+      'build/*.js': ['coverage']
+    },
+    coverageReporter: {
+      dir : 'coverage/',
+      reporters: [
+        {type: 'lcov', subdir: '.'},
+        {type: 'text-summary'}
+      ]
+    }
   });
 };

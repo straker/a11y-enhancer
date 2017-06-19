@@ -34,28 +34,30 @@
   var uid = 1;
 
   /**
-   * Tests if an element is visible on the screen.
-   * @see http://stackoverflow.com/a/36737835/2124254
-   * @param {HTMLElement} elm
-   * @returns {boolean}
-   */
-  function isVisible(elm) {
-    if (!elm.offsetHeight && !elm.offsetWidth || getComputedStyle(elm).visibility === 'hidden') {
-      return false;
-    }
-    return true;
-  }
-
-  /**
    * Implements an accessible accordion menu with proper state and focus support.
    * @see https://www.w3.org/TR/wai-aria-practices/#dialog_modal
    *
    * @param {HTMLElement} element - Container element of the accordion.
    * @param {ShadowRoot} [shadfowRoot=element] - Shadow root element if using a custom element with shadow root. Defaults to the container element.
    *
+   * For this to work, the modal must be given the role="dialog". The element will be moved
+   * to be a direct child of body. This ensures there are no z-index problems and that the
+   * modal can trap keyboard focus easily by adding the inert attribute to all it's siblings.
+   *
+   * This implementation also requires the inert polyfill (npm install --save wicg-inert).
+   *
+   * By default, the modal is of type modal. This means that keyboard interactions are trapped
+   * to the modal when it is opened and the rest of the page cannot be interacted with.
+   *
    * Optional attributes on container element
    *
-   *    modeless - a modeless dialog
+   *    modeless - A modeless dialog
+   *    no-esc - Don't close the modal on escape key
+   *
+   * Events will pass the target element as the detail property of the event
+   *
+   *    modal-opened - fired when the modal is opened
+   *    modal-closed - fired when the modal is closed
    */
   function dialog(element, shadowRoot) {
     // ensure we are a DOM element and have proper element functions
@@ -66,186 +68,140 @@
     // the polyfill is not loaded
     var root = shadowRoot && shadowRoot.toString() === '[object ShadowRoot]' ? shadowRoot : element;
 
+    // states
+    var previousActiveElement = void 0;
+
     // options
     var OPTIONS = {
-      modeless: element.hasAttribute('modeless')
+      modeless: element.hasAttribute('modeless'),
+      noEsc: element.hasAttribute('no-esc')
     };
 
-    // add role and state for the dialog
-    var dialog = root.querySelector('[role="dialog"]') || element;
-    dialog.setAttribute('aria-hidden', true);
+    // the role could be on the element or one of it's children
+    var dialog = element.getAttribute('role') === 'dialog' ? element : root.querySelector('[role="dialog"]');
 
-    // allow the dialog to be focusable
+    // allow the dialog to be focusable when opened
     // @see https://github.com/whatwg/html/issues/1929
-    dialog.setAttribute('tabindex', '-1');
+    dialog.setAttribute('tabindex', -1);
     dialog.style.outline = 'none';
-    dialog.type = OPTIONS.modeless ? 'modeless' : 'modal';
 
-    // add an id to the title of the modal so the container can use it for
-    // aria-labelledby
-    var title = root.querySelector('h1, h2, h3, h4, h5, h6');
-    if (title) {
-      if (!title.hasAttribute('id')) {
-        title.setAttribute('id', TITLE_ID + uid++);
-      }
+    // move the dialog to be a direct child of body if it's not already. this both resolves any
+    // z-index problems and makes disabling the rest of the page easier (just query selector
+    // everything under body except the dialog)
+    if (root.parentElement !== document.body) {
+      document.body.appendChild(root);
+    }
 
+    // find the first heading and make it the label to the dialog
+    var title = dialog.querySelector('h1,h2,h3,h4,h5,h6');
+    if (!title.hasAttribute('id')) {
+      title.setAttribute('id', TITLE_ID + uid++);
+    }
+
+    // only set the label if it's not already set
+    if (!dialog.hasAttribute('aria-labelledby')) {
       dialog.setAttribute('aria-labelledby', title.getAttribute('id'));
     }
 
+    // give the dialog an open and close method that can be called externally
     /**
-     * Public function to open the dialog.
+     * Open the dialog.
      */
-    dialog.show = function () {
-      var _this = this;
+    dialog.open = function () {
+      if (this.hasAttribute('open')) return;
 
-      if (!this.hasAttribute('aria-hidden')) {
-        return;
-      }
+      previousActiveElement = document.activeElement;
 
-      this.removeAttribute('aria-hidden');
+      if (!OPTIONS.modeless) {
 
-      // save a reference to the element that opened this modal
-      this._lastFocusedElement = document.activeElement;
-
-      // focus the dialog element using tabindex=-1 and hide the focus styling instead of auto
-      // focusing the first element. users can still use autofocus to focus an element instead
-      // of the dialog.
-      // @see https://github.com/whatwg/html/issues/1929
-
-      // find the first visible autofocus element and focus it
-      var autofocusEls = this.querySelectorAll('[autofocus]');
-      var autofocusEl;
-      for (var i = 0; i < autofocusEls.length; i++) {
-        if (isVisible(autofocusEls[i])) {
-          autofocusEl = autofocusEls[i];
-          autofocusEl.focus();
-          break;
-        }
-      }
-
-      if (!autofocusEl) {
-        dialog.focus();
-      }
-
-      if (this.type === 'modal') {
-
-        // prevent the page from scrolling
+        // prevent page from scrolling while open
         document.body.style.overflow = 'hidden';
 
-        // focus must be held within the dialog until it is canceled or submitted.
-        // pressing tab with focus on the last focusable item in the dialog will move focus
-        // back to the first focusable item in the dialog
-        // likewise, if the user is shift-tabbing through elements in the dialog, pressing
-        // shift-tab with focus on the first focusable item in the dialog will move focus
-        // to the last item in the dialog
-        //
-        // to do this, we'll make everything outside of the modal have a tabindex=-1
-        // since we can't determine what in the modal is focusable and tabbable
-        // @see https://github.com/whatwg/html/issues/2071
-        //
-        // run async so it doesn't interfere with any dialog open animation
-        setTimeout(function () {
-          var modalNodes = Array.from(_this.querySelectorAll('*'));
-
-          // by only finding elements that do not have tabindex="-1" we ensure we don't
-          // corrupt the previous state of the element if a modal was already open
-          _this._nonModalNodes = document.querySelectorAll('body *:not([role="dialog"]):not([tabindex="-1"])');
-
-          for (var i = 0; i < _this._nonModalNodes.length; i++) {
-            var node = _this._nonModalNodes[i];
-
-            if (!modalNodes.includes(node)) {
-
-              // save the previous tabindex state so we can restore it on close
-              node._prevTabindex = node.getAttribute('tabindex');
-              node.setAttribute('tabindex', -1);
-
-              // tabindex=-1 does not prevent the mouse from focusing the node (which
-              // would show a focus outline around the element). prevent this by disabling
-              // outline styles while the modal is open
-              // @see https://www.sitepoint.com/when-do-elements-take-the-focus/
-              node.style.outline = 'none';
-            }
+        // make all siblings of the dialog inert if it's a modal
+        Array.from(document.body.children).forEach(function (child) {
+          if (child !== root) {
+            child.inert = true;
           }
-        }, 0);
+        });
       }
 
-      // add event listeners
-      document.addEventListener('keydown', keydownHandler);
-      document.addEventListener('mousedown', clickHandler, true);
+      this.setAttribute('open', '');
+
+      // event listeners
+      document.addEventListener('click', checkCloseDialog, true);
+
+      if (!OPTIONS.noEsc) {
+        document.addEventListener('keydown', checkCloseDialog, true);
+      }
+
+      // focus the dialog if no element has autofocus attribute
+      if (!dialog.querySelector('[autofocus]')) {
+        this.focus();
+      } else {
+        dialog.querySelector('[autofocus]').focus();
+      }
+
+      root.dispatchEvent(new CustomEvent('modal-opened', { detail: this }));
     };
 
     /**
-     * Public function to close the dialog.
+     * Close the dialog.
      */
     dialog.close = function () {
-      var _this2 = this;
+      if (!this.hasAttribute('open')) return;
 
-      if (this.hasAttribute('aria-hidden')) {
-        return;
-      }
-
-      this.setAttribute('aria-hidden', true);
-
-      // restore tabindex to all nodes
-      if (this.type === 'modal') {
+      if (!OPTIONS.modeless) {
         document.body.style.overflow = null;
 
-        // restore or remove tabindex from nodes
-        // run async so it doesn't interfere with the dialog close animation
-        setTimeout(function () {
-          for (var i = 0; i < _this2._nonModalNodes.length; i++) {
-            var node = _this2._nonModalNodes[i];
-
-            if (node._prevTabindex) {
-              node.setAttribute('tabindex', node._prevTabindex);
-              node._prevTabindex = null;
-            } else {
-              node.removeAttribute('tabindex');
-            }
-
-            node.style.outline = null;
+        // uninert all siblings
+        Array.from(document.body.children).forEach(function (child) {
+          if (child !== root) {
+            child.inert = false;
           }
-        }, 0);
+        });
       }
 
-      // when the dialog is closed or canceled focus should return to the element
-      // in the application which had focus before the dialog is invoked
-      this._lastFocusedElement.focus();
-      this._lastFocusedElement = null;
+      this.removeAttribute('open');
 
-      // clean up event listeners
-      document.removeEventListener('keydown', keydownHandler);
-      document.removeEventListener('mousedown', clickHandler, true);
+      // remove event listeners
+      document.removeEventListener('click', checkCloseDialog, true);
+      document.removeEventListener('keydown', checkCloseDialog, true);
+
+      // focus the previous element
+      previousActiveElement.focus();
+      previousActiveElement = null;
+
+      root.dispatchEvent(new CustomEvent('modal-closed', { detail: this }));
     };
 
-    // keyboard events
-    function keydownHandler(e) {
+    /**
+     * Check for events that should close the dialog.
+     * @param {Event} e
+     */
+    function checkCloseDialog(e) {
 
-      // it is recommended that a dialog also be canceled by pressing the Escape
-      // key with focus on any item
-      if (e.which === esc) {
-        root.dispatchEvent(new CustomEvent('dialog-closed'));
+      // check for escape on keydown
+      if (e.type === 'keydown' && e.which === esc) {
         dialog.close();
       }
-    }
 
-    function clickHandler(e) {
+      // check if click happened outside of dialog
+      else {
+          var el = e.target;
 
-      if (dialog.type !== 'modal') {
-        return;
-      }
+          while (el.parentElement) {
+            if (el === dialog) {
+              break;
+            }
 
-      // modals prevent interacting with the content of the page until closed
-      var el = e.target;
-      while (el.parentElement && el !== dialog) {
-        el = el.parentElement;
-      }
+            el = el.parentElement;
+          }
 
-      if (el !== dialog) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+          // close the dialog if the click happened outside of it
+          if (el !== dialog) {
+            dialog.close();
+          }
+        }
     }
   }
 

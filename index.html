@@ -7,6 +7,7 @@
   <script src="build/combobox.js"></script>
   <script src="build/dialog.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/0.7.23/webcomponents.min.js"></script>
+  <script src="node_modules/wicg-inert/dist/inert.min.js"></script>
   <link rel="import" href="./custom-accordion.html">
 </head>
 <body>
@@ -39,7 +40,7 @@
   <script>
   a11yEnhancer.dialog(dialog);
   function openDialog() {
-    dialog.show();
+    dialog.open();
   }
 
   function closeDialog() {
