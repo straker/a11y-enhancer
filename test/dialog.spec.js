@@ -132,18 +132,6 @@ describe('dialog', function() {
       expect(dialog.hasAttribute('open')).to.be.false;
     });
 
-    it('should not close the dialog with the esc key if the dialog has the no-esc attribute', function() {
-      dialog.setAttribute('no-esc', '');
-      a11yEnhancer.dialog(dialog);
-      dialog.open();
-
-      var event = new Event('keydown', {bubbles: true});
-      event.which = KEYS.esc;
-      dialog.dispatchEvent(event);
-
-      expect(dialog.hasAttribute('open')).to.be.true;
-    });
-
     it('should close the modal when clicking outside of it', function() {
       dialog.open();
 

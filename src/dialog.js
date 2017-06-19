@@ -46,8 +46,7 @@ function dialog(element, shadowRoot) {
 
   // options
   const OPTIONS = {
-    modeless: element.hasAttribute('modeless'),
-    noEsc: element.hasAttribute('no-esc')
+    modeless: element.hasAttribute('modeless')
   };
 
   // the role could be on the element or one of it's children
@@ -101,11 +100,8 @@ function dialog(element, shadowRoot) {
     this.setAttribute('open', '');
 
     // event listeners
-    document.addEventListener('click', checkCloseDialog, true);
-
-    if (!OPTIONS.noEsc) {
-      document.addEventListener('keydown', checkCloseDialog, true);
-    }
+    document.addEventListener('click', checkCloseDialog);
+    document.addEventListener('keydown', checkCloseDialog);
 
     // focus the dialog if no element has autofocus attribute
     if (!dialog.querySelector('[autofocus]')) {
@@ -138,8 +134,8 @@ function dialog(element, shadowRoot) {
     this.removeAttribute('open');
 
     // remove event listeners
-    document.removeEventListener('click', checkCloseDialog, true);
-    document.removeEventListener('keydown', checkCloseDialog, true);
+    document.removeEventListener('click', checkCloseDialog);
+    document.removeEventListener('keydown', checkCloseDialog);
 
     // focus the previous element
     previousActiveElement.focus();
