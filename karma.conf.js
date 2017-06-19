@@ -9,7 +9,7 @@ module.exports = function(config) {
     frameworks: ['mocha', 'chai'],
     files: [
       'node_modules/wicg-inert/dist/inert.min.js',
-      'build/*.js',
+      'dist/*.js',
       'helpers.js',
       'test/*.js',
 
@@ -19,7 +19,7 @@ module.exports = function(config) {
     browsers: ['PhantomJS'],
     reporters: ['progress', 'coverage'],
     preprocessors: {
-      'build/*.js': ['coverage']
+      'dist/*.js': ['coverage']
     },
     coverageReporter: {
       dir : 'coverage/',

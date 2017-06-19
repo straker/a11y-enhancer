@@ -55,7 +55,7 @@ gulp.task('build', function() {
         'babel-plugin-transform-regenerator',
       ]
     }))
-    .pipe(gulp.dest('build'))
+    .pipe(gulp.dest('dist'))
 
     // create html import file
     .pipe(rename(function(path) {
@@ -72,7 +72,7 @@ gulp.task('test', function(done) {
     frameworks: ['mocha', 'chai'],
     files: [
       'node_modules/wicg-inert/dist/inert.min.js',
-      'build/*.js',
+      'dist/*.js',
       'helpers.js',
       'test/*.js',
 
