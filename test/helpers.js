@@ -30,9 +30,9 @@ function loadFixture(name, callback) {
     }
 
     var el = document.createElement('div');
-    el.innerHTML = req.responseText;;
+    el.innerHTML = req.responseText;
 
-    callback(el);
+    callback(el.children[0]);
   });
 
   req.open('GET', 'base/test/fixtures/' + name + '.html', true);

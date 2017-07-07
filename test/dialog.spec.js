@@ -1,5 +1,5 @@
 describe('dialog', function() {
-  var fixtureEl, el, dialog;
+  let fixtureEl, dialog;
 
   // load the fixture
   before(function(done) {
@@ -11,10 +11,10 @@ describe('dialog', function() {
 
   // setup the element for each test
   beforeEach(function() {
-    el = fixtureEl.cloneNode(true);
-    a11yEnhancer.dialog(el);
+    dialog = fixtureEl.cloneNode(true);
+    a11yEnhancer.dialog(dialog);
 
-    dialog = el.querySelector('[role="dialog"]');
+    document.body.appendChild(dialog);
   });
 
   afterEach(function() {
@@ -27,125 +27,264 @@ describe('dialog', function() {
 
 
 
-  describe('keyboard, mouse, and AIRA support', function() {
+  describe('functionality, and keyboard and AIRA support', function() {
 
     it ('should add tabindex=-1 to the dialog', function() {
       expect(dialog.getAttribute('tabindex')).to.equal('-1');
     });
 
     it('should add aria-labelledby to the dialog which points to the first header', function() {
-      var title = dialog.querySelector('h1,h2,h3,h4,h5,h6');
+      let title = dialog.querySelector('h1,h2,h3,h4,h5,h6');
       expect(title.hasAttribute('id')).to.be.true;
       expect(dialog.getAttribute('aria-labelledby')).to.equal(title.getAttribute('id'));
     });
 
-    it('should have open and close functions', function() {
-      expect(typeof dialog.open).to.equal('function');
+    it('should not throw an error if there is no header', function() {
+      dialog = fixtureEl.cloneNode(true);
+      dialog.querySelector('h1').remove();
+
+      let fn = function() {
+        a11yEnhancer.dialog(dialog);
+      }
+
+      expect(fn).to.not.throw();
+    });
+
+    it('should not throw errors when called without parameters', function() {
+      let fn = function() {
+        a11yEnhancer.dialog();
+      }
+
+      expect(fn).to.not.throw();
+    });
+
+    it('should allow you to pass in a shadow root', function() {
+      dialog = fixtureEl.cloneNode(true);
+
+      let div = document.createElement('div');
+      let shadow = div.attachShadow({mode: 'closed'});
+      shadow.appendChild(dialog);
+      a11yEnhancer.dialog(div, shadow);
+
+      expect(shadow.querySelector('[role=dialog]').getAttribute('tabindex')).to.equal('-1');
+
+      // for cleanup, make dialog equal the div that has the close function
+      dialog = div;
+    });
+
+    it('should have show and close functions', function() {
+      expect(typeof dialog.show).to.equal('function');
       expect(typeof dialog.close).to.equal('function');
     });
 
-    it('should move the dialog to the body if not a child of body', function() {
-      var div = document.createElement('div');
-      document.body.appendChild(div);
-      div.appendChild(dialog);
-
-      expect(dialog.parentElement).to.equal(div);
-
-      a11yEnhancer.dialog(dialog);
-
-      expect(dialog.parentElement).to.equal(document.body);
+    it('should set the _open property when the dialog is opened', function() {
+      dialog.show();
+      expect(dialog._open).to.be.true;
     });
 
-    it('should add the open attribute when the dialog is opened', function() {
-      dialog.open();
-      expect(dialog.hasAttribute('open')).to.be.true;
+    it('should move focus to the dialog when opened if no element has autofocus', function(done) {
+      // timeout after 1 second if the event is not triggered
+      this.timeout(1000);
+
+      dialog.show();
+
+      // ensure the event has had time to trigger
+      setTimeout(function() {
+        expect(document.activeElement).to.equal(dialog);
+        done();
+      }, 100);
     });
 
-    it('should move focus to the dialog when opened if no element has autofocus', function() {
-      dialog.open();
-      expect(document.activeElement).to.equal(dialog);
-    });
+    it('should move focus to the element with autofocus when opened', function(done) {
+      // timeout after 1 second if the event is not triggered
+      this.timeout(1000);
 
-    it('should move focus to the elemtn with autofocus when opened', function() {
-      var button = dialog.querySelector('button');
+      let button = dialog.querySelector('button');
       button.setAttribute('autofocus', '');
 
-      dialog.open();
-      expect(document.activeElement).to.equal(button);
+      dialog.show();
+
+      // ensure the event has had time to trigger
+      setTimeout(function() {
+        expect(document.activeElement).to.equal(button);
+        done();
+      }, 100);
     });
 
-    it('should return focus to the element that opened the dialog when it closes', function() {
-      var button = document.createElement('button');
+    it('should return focus to the element that opened the dialog when it closes', function(done) {
+      // timeout after 1 second if the event is not triggered
+      this.timeout(1000);
+
+      let button = document.createElement('button');
       document.body.appendChild(button);
       button.focus();
 
       expect(document.activeElement).to.equal(button);
 
-      dialog.open();
+      dialog.show();
 
-      expect(document.activeElement).to.not.equal(button);
+      // ensure the event has had time to trigger
+      setTimeout(function() {
+        expect(document.activeElement).to.not.equal(button);
 
-      dialog.close();
+        dialog.close();
 
-      expect(document.activeElement).to.equal(button);
+        setTimeout(function() {
+          expect(document.activeElement).to.equal(button);
+          done();
+        }, 100);
+      }, 100);
     });
 
-    it('should add the inert attribute to all siblings when opened and remove it when closed', function() {
-      var children = Array.from(document.body.children);
-      children.forEach(function(child) {
-        expect(child.hasAttribute('inert')).to.be.false;
+    it('should not open the dialog twice', function(done) {
+      let count = 0;
+
+      dialog.addEventListener('dialog-opened', function(e) {
+        count++;
       });
 
-      dialog.open();
+      dialog.show();
+      dialog.show();
 
-      children.forEach(function(child) {
-        if (child !== el) {  // el because the dialog code moves the passed in element to body
-          expect(child.hasAttribute('inert')).to.be.true;
-        }
+      // ensure the event has had time to trigger
+      setTimeout(function() {
+        expect(count).to.equal(1);
+        done();
+      }, 500);
+    });
+
+    it('should find the dialog if it\'s a child of the element', function() {
+      dialog = fixtureEl.cloneNode(true);
+
+      let div = document.createElement('div');
+      div.appendChild(dialog);
+
+      a11yEnhancer.dialog(div);
+
+      expect(dialog.getAttribute('tabindex')).to.equal('-1');
+
+      // for cleanup, make dialog equal the div that has the close function
+      dialog = div;
+    });
+
+
+
+
+
+    describe('modal', function() {
+
+      it('should default to type modal', function() {
+        expect(dialog.type).to.equal('modal');
       });
 
-      dialog.close();
+      it('should move the dialog to the body if not a child of body', function() {
+        let div = document.createElement('div');
+        document.body.appendChild(div);
+        div.appendChild(dialog);
 
-      children.forEach(function(child) {
-        expect(child.hasAttribute('inert')).to.be.false;
+        expect(dialog.parentElement).to.equal(div);
+
+        a11yEnhancer.dialog(dialog);
+        window.dispatchEvent(new Event(''))
+
+        expect(dialog.parentElement).to.equal(document.body);
       });
-    });
 
-    it('should not add the inert attribute if the modal is of type modeless', function() {
-      dialog.setAttribute('modeless', '');
-      a11yEnhancer.dialog(dialog);
+      it('should add the inert attribute to all siblings when opened and remove it when closed', function() {
+        let children = Array.from(document.body.children);
+        children.forEach(function(child) {
+          expect(child.hasAttribute('inert')).to.be.false;
+        });
 
-      dialog.open();
+        dialog.show();
 
-      Array.from(document.body.children).forEach(function(child) {
-        expect(child.hasAttribute('inert')).to.be.false;
+        children.forEach(function(child) {
+          if (child !== dialog) {
+            expect(child.hasAttribute('inert')).to.be.true;
+          }
+        });
+
+        dialog.close();
+
+        children.forEach(function(child) {
+          expect(child.hasAttribute('inert')).to.be.false;
+        });
       });
+
+      it('should close the dialog with the esc key', function() {
+        dialog.show();
+
+        let event = new Event('keydown', {bubbles: true});
+        event.which = KEYS.esc;
+        dialog.dispatchEvent(event);
+
+        expect(dialog._open).to.be.false;
+      });
+
+      it('should not close the dialog with any key', function() {
+        dialog.show();
+
+        let event = new Event('keydown', {bubbles: true});
+        event.which = 1;
+        dialog.dispatchEvent(event);
+
+        expect(dialog._open).to.be.true;
+      });
+
     });
 
-    it('should close the dialog with the esc key', function() {
-      dialog.open();
 
-      var event = new Event('keydown', {bubbles: true});
-      event.which = KEYS.esc;
-      dialog.dispatchEvent(event);
 
-      expect(dialog.hasAttribute('open')).to.be.false;
-    });
 
-    it('should close the modal when clicking outside of it', function() {
-      dialog.open();
 
-      el.dispatchEvent( new Event('click', {bubbles: true}) );
+    describe('modeless', function() {
 
-      expect(dialog.hasAttribute('open')).to.be.false;
-    });
+      it('should allow type of modeless', function() {
+        dialog.setAttribute('type', 'modeless');
+        a11yEnhancer.dialog(dialog);
 
-    it('should not close the modal when clicking inside of it', function() {
-      dialog.open();
+        expect(dialog.type).to.equal('modeless');
+      });
 
-      dialog.dispatchEvent( new Event('click', {bubbles: true}) );
+      it('should not move the dialog to the body if not a child of body', function() {
+        dialog.setAttribute('type', 'modeless');
+        a11yEnhancer.dialog(dialog);
 
-      expect(dialog.hasAttribute('open')).to.be.true;
+        let div = document.createElement('div');
+        document.body.appendChild(div);
+        div.appendChild(dialog);
+
+        expect(dialog.parentElement).to.equal(div);
+
+        a11yEnhancer.dialog(dialog);
+
+        expect(dialog.parentElement).to.equal(div);
+      });
+
+      it('should not add the inert attribute if the modal is of type modeless', function() {
+        dialog.setAttribute('type', 'modeless');
+        a11yEnhancer.dialog(dialog);
+
+        dialog.show();
+
+        Array.from(document.body.children).forEach(function(child) {
+          expect(child.hasAttribute('inert')).to.be.false;
+        });
+      });
+
+      it('should not close the dialog with the esc key', function() {
+        dialog.setAttribute('type', 'modeless');
+        a11yEnhancer.dialog(dialog);
+
+        dialog.show();
+
+        let event = new Event('keydown', {bubbles: true});
+        event.which = KEYS.esc;
+        dialog.dispatchEvent(event);
+
+        expect(dialog._open).to.be.true;
+      });
+
     });
 
   });
@@ -156,30 +295,32 @@ describe('dialog', function() {
 
   describe('events', function() {
 
-    it('should fire the "dialog-opened" event when the dialog is opened', function() {
+    it('should fire the "dialog-opened" event when the dialog is opened', function(done) {
       // timeout after 1 second if the event is not triggered
       this.timeout(1000);
 
-      el.addEventListener('dialog-opened', function(e) {
-        expect(e.detail).to.equal(dialog);
+      expect(dialog._open).to.be.false;
+
+      dialog.addEventListener('dialog-opened', function(e) {
+        expect(e.target).to.equal(dialog);
 
         done();
       });
 
-      dialog.open();
+      dialog.show();
     });
 
-    it('should fire the "dialog-closed" event when the dialog is closed', function() {
+    it('should fire the "dialog-closed" event when the dialog is closed', function(done) {
       // timeout after 1 second if the event is not triggered
       this.timeout(1000);
 
-      el.addEventListener('dialog-closed', function(e) {
-        expect(e.detail).to.equal(dialog);
+      dialog.addEventListener('dialog-closed', function(e) {
+        expect(e.target).to.equal(dialog);
 
         done();
       });
 
-      dialog.open();
+      dialog.show();
       dialog.close();
     });
 

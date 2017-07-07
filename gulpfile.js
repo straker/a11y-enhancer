@@ -66,6 +66,10 @@ gulp.task('build', function() {
     .pipe(gulp.dest('.'));
 });
 
+gulp.task('watch', function() {
+  gulp.watch('src/*', ['build']);
+});
+
 gulp.task('test', function(done) {
   new Server({
     basePath: '',

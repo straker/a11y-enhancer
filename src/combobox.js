@@ -1,4 +1,3 @@
-import CustomEvent from './custom-event';
 import * as KEYS from './key-codes';
 
 const LISTBOX_ID = 'ae_combobox-listbox';

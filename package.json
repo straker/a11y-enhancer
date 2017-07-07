@@ -43,6 +43,7 @@
     "gulp-rename": "^1.2.2",
     "gulp-rollup": "^2.5.1",
     "istanbul": "^0.4.5",
+    "karma": "^1.7.0",
     "karma-chai": "^0.1.0",
     "karma-chrome-launcher": "^2.0.0",
     "karma-coverage": "^1.1.1",

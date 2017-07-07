@@ -1,4 +1,3 @@
-import CustomEvent from './custom-event';
 import * as KEYS from './key-codes';
 
 const TITLE_ID = 'ae_dialog-heading';
@@ -24,67 +23,80 @@ let uid = 1;
  *
  * Optional attributes on container element
  *
- *    modeless - A modeless dialog
- *    no-esc - Don't close the modal on escape key
+ *    type - type of dialog (modal, modeless). defaults to modal
  *
  * Events will pass the target element as the detail property of the event
  *
- *    modal-opened - fired when the modal is opened
- *    modal-closed - fired when the modal is closed
+ *    modal-opened - fired on the element when the modal is opened (does not bubble)
+ *    modal-closed - fired on the element when the modal is closed (does not bubble)
  */
 function dialog(element, shadowRoot) {
+
   // ensure we are a DOM element and have proper element functions
-  if (!element instanceof HTMLElement) return;
+  if ( !(element instanceof HTMLElement) ) return;
 
   // if no shadowRoot is passed default to the container element
   // using toString() is the only safe way to check for a shadow root node when
   // the polyfill is not loaded
   const root = (shadowRoot && shadowRoot.toString() === '[object ShadowRoot]' ? shadowRoot : element);
 
+  const VALID_TYPES = ['modal', 'modeless'];
+  const DEFAULT_TYPE = VALID_TYPES[0];
+
   // states
   let previousActiveElement;
+  element._open = false;
 
   // options
-  const OPTIONS = {
-    modeless: element.hasAttribute('modeless')
-  };
+  let type = element.getAttribute('type');
+  if (VALID_TYPES.includes(type)) {
+    element.type = type;
+  }
+  else {
+    element.type = DEFAULT_TYPE;
+  }
 
   // the role could be on the element or one of it's children
   const dialog = (element.getAttribute('role') === 'dialog' ? element : root.querySelector('[role="dialog"]'));
+
+  // move the dialog to be a direct child of body if it's not already. this both resolves any
+  // z-index problems and makes disabling the rest of the page easier (just query selector
+  // everything under body except the dialog)
+  if (element.type === 'modal' && element.parentElement !== document.body) {
+    document.body.appendChild(element);
+  }
 
   // allow the dialog to be focusable when opened
   // @see https://github.com/whatwg/html/issues/1929
   dialog.setAttribute('tabindex', -1);
   dialog.style.outline = 'none';
 
-  // move the dialog to be a direct child of body if it's not already. this both resolves any
-  // z-index problems and makes disabling the rest of the page easier (just query selector
-  // everything under body except the dialog)
-  if (root.parentElement !== document.body) {
-    document.body.appendChild(root);
-  }
-
   // find the first heading and make it the label to the dialog
   const title = dialog.querySelector('h1,h2,h3,h4,h5,h6');
-  if (!title.hasAttribute('id')) {
-    title.setAttribute('id', TITLE_ID + uid++);
+  if (title) {
+    if (!title.hasAttribute('id')) {
+      title.setAttribute('id', TITLE_ID + uid++);
+    }
+
+    // only set the label if it's not already set
+    if (!dialog.hasAttribute('aria-labelledby')) {
+      dialog.setAttribute('aria-labelledby', title.getAttribute('id'));
+    }
   }
 
-  // only set the label if it's not already set
-  if (!dialog.hasAttribute('aria-labelledby')) {
-    dialog.setAttribute('aria-labelledby', title.getAttribute('id'));
-  }
-
-  // give the dialog an open and close method that can be called externally
+  // give the element an open and close method that can be called externally
   /**
    * Open the dialog.
    */
-  dialog.open = function() {
-    if (this.hasAttribute('open')) return;
+  element.show = function() {
+    if (this._open) return;
 
+    this._open = true;
     previousActiveElement = document.activeElement;
 
-    if (!OPTIONS.modeless) {
+    element.dispatchEvent(new Event('dialog-opened'));
+
+    if (element.type === 'modal') {
 
       // prevent page from scrolling while open
       document.body.style.overflow = 'hidden';
@@ -95,32 +107,36 @@ function dialog(element, shadowRoot) {
           child.inert = true;
         }
       });
+
+      // event listeners
+      element.addEventListener('keydown', checkCloseDialog);
     }
 
-    this.setAttribute('open', '');
+    // wait for the dispatch event to run in case a modal is hidden (display: none,
+    // visibility: hidden, inert) as the browser will not focus a hidden element
+    setTimeout(function(e) {
 
-    // event listeners
-    document.addEventListener('click', checkCloseDialog);
-    document.addEventListener('keydown', checkCloseDialog);
-
-    // focus the dialog if no element has autofocus attribute
-    if (!dialog.querySelector('[autofocus]')) {
-      this.focus();
-    }
-    else {
-      dialog.querySelector('[autofocus]').focus();
-    }
-
-    root.dispatchEvent(new CustomEvent('modal-opened', {detail: this}));
+      // focus the dialog if no element has autofocus attribute
+      if (!dialog.querySelector('[autofocus]')) {
+        dialog.focus();
+      }
+      else {
+        dialog.querySelector('[autofocus]').focus();
+      }
+    }, 50);
   };
 
   /**
    * Close the dialog.
    */
-  dialog.close = function() {
-    if (!this.hasAttribute('open')) return;
+  element.close = function() {
+    if (!this._open) return;
 
-    if (!OPTIONS.modeless) {
+    this._open = false;
+
+    element.dispatchEvent(new Event('dialog-closed'));
+
+    if (element.type === 'modal') {
       document.body.style.overflow = null;
 
       // uninert all siblings
@@ -129,19 +145,19 @@ function dialog(element, shadowRoot) {
           child.inert = false;
         }
       });
+
+      // remove event listeners
+      element.removeEventListener('keydown', checkCloseDialog);
     }
 
-    this.removeAttribute('open');
+    // wait for the dispatch event to run in case a modal is hidden (display: none,
+    // visibility: hidden, inert) as the browser will not focus a hidden element
+    setTimeout(function(e) {
 
-    // remove event listeners
-    document.removeEventListener('click', checkCloseDialog);
-    document.removeEventListener('keydown', checkCloseDialog);
-
-    // focus the previous element
-    previousActiveElement.focus();
-    previousActiveElement = null;
-
-    root.dispatchEvent(new CustomEvent('modal-closed', {detail: this}));
+      // focus the previous element
+      previousActiveElement.focus();
+      previousActiveElement = null;
+    }, 50);
   };
 
   /**
@@ -152,25 +168,7 @@ function dialog(element, shadowRoot) {
 
     // check for escape on keydown
     if (e.type === 'keydown' && e.which === KEYS.esc) {
-      dialog.close();
-    }
-
-    // check if click happened outside of dialog
-    else {
-      let el = e.target;
-
-      while (el.parentElement) {
-        if (el === dialog) {
-          break;
-        }
-
-        el = el.parentElement;
-      }
-
-      // close the dialog if the click happened outside of it
-      if (el !== dialog) {
-        dialog.close();
-      }
+      element.close();
     }
   }
 }

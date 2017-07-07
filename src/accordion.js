@@ -1,4 +1,3 @@
-import CustomEvent from './custom-event';
 import * as KEYS from './key-codes';
 
 const TAB_ID = 'ae_accordion-heading';
