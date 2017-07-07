@@ -78,7 +78,7 @@ describe('dialog', function() {
     });
 
     it('should set the _open property when the dialog is opened', function() {
-      dialog.show();
+      dialog.open();
       expect(dialog._open).to.be.true;
     });
 
@@ -86,7 +86,7 @@ describe('dialog', function() {
       // timeout after 1 second if the event is not triggered
       this.timeout(1000);
 
-      dialog.show();
+      dialog.open();
 
       // ensure the event has had time to trigger
       setTimeout(function() {
@@ -102,7 +102,7 @@ describe('dialog', function() {
       let button = dialog.querySelector('button');
       button.setAttribute('autofocus', '');
 
-      dialog.show();
+      dialog.open();
 
       // ensure the event has had time to trigger
       setTimeout(function() {
@@ -121,7 +121,7 @@ describe('dialog', function() {
 
       expect(document.activeElement).to.equal(button);
 
-      dialog.show();
+      dialog.open();
 
       // ensure the event has had time to trigger
       setTimeout(function() {
@@ -143,8 +143,8 @@ describe('dialog', function() {
         count++;
       });
 
-      dialog.show();
-      dialog.show();
+      dialog.open();
+      dialog.open();
 
       // ensure the event has had time to trigger
       setTimeout(function() {
@@ -196,7 +196,7 @@ describe('dialog', function() {
           expect(child.hasAttribute('inert')).to.be.false;
         });
 
-        dialog.show();
+        dialog.open();
 
         children.forEach(function(child) {
           if (child !== dialog) {
@@ -212,7 +212,7 @@ describe('dialog', function() {
       });
 
       it('should close the dialog with the esc key', function() {
-        dialog.show();
+        dialog.open();
 
         let event = new Event('keydown', {bubbles: true});
         event.which = KEYS.esc;
@@ -222,7 +222,7 @@ describe('dialog', function() {
       });
 
       it('should not close the dialog with any key', function() {
-        dialog.show();
+        dialog.open();
 
         let event = new Event('keydown', {bubbles: true});
         event.which = 1;
@@ -265,7 +265,7 @@ describe('dialog', function() {
         dialog.setAttribute('type', 'modeless');
         a11yEnhancer.dialog(dialog);
 
-        dialog.show();
+        dialog.open();
 
         Array.from(document.body.children).forEach(function(child) {
           expect(child.hasAttribute('inert')).to.be.false;
@@ -276,7 +276,7 @@ describe('dialog', function() {
         dialog.setAttribute('type', 'modeless');
         a11yEnhancer.dialog(dialog);
 
-        dialog.show();
+        dialog.open();
 
         let event = new Event('keydown', {bubbles: true});
         event.which = KEYS.esc;
@@ -307,7 +307,7 @@ describe('dialog', function() {
         done();
       });
 
-      dialog.show();
+      dialog.open();
     });
 
     it('should fire the "dialog-closed" event when the dialog is closed', function(done) {
@@ -320,7 +320,7 @@ describe('dialog', function() {
         done();
       });
 
-      dialog.show();
+      dialog.open();
       dialog.close();
     });
 

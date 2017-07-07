@@ -45,7 +45,7 @@ function dialog(element, shadowRoot) {
 
   // states
   let previousActiveElement;
-  element._open = false;
+  let isOpen = false;
 
   // options
   let type = element.getAttribute('type');
@@ -84,14 +84,21 @@ function dialog(element, shadowRoot) {
     }
   }
 
+  // prevent anyone from modifying the public isOpen property
+  Object.defineProperty(element, 'isOpen', {
+    get: function() {
+      return isOpen;
+    }
+  })
+
   // give the element an open and close method that can be called externally
   /**
    * Open the dialog.
    */
-  element.show = function() {
-    if (this._open) return;
+  element.open = function() {
+    if (isOpen) return;
 
-    this._open = true;
+    isOpen = true;
     previousActiveElement = document.activeElement;
 
     element.dispatchEvent(new Event('dialog-opened'));
@@ -130,9 +137,9 @@ function dialog(element, shadowRoot) {
    * Close the dialog.
    */
   element.close = function() {
-    if (!this._open) return;
+    if (!isOpen) return;
 
-    this._open = false;
+    isOpen = false;
 
     element.dispatchEvent(new Event('dialog-closed'));
 

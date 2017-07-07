@@ -56,14 +56,6 @@ gulp.task('build', function() {
       ]
     }))
     .pipe(gulp.dest('dist'))
-
-    // create html import file
-    .pipe(rename(function(path) {
-      path.extname = '.html'
-    }))
-    .pipe(concat.header('<script>\n'))
-    .pipe(concat.footer('\n</script>'))
-    .pipe(gulp.dest('.'));
 });
 
 gulp.task('watch', function() {
