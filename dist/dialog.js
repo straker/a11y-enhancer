@@ -58,7 +58,7 @@
 
     // options
     var type = element.getAttribute('type');
-    if (VALID_TYPES.includes(type)) {
+    if (VALID_TYPES.indexOf(type) !== -1) {
       element.type = type;
     } else {
       element.type = DEFAULT_TYPE;
