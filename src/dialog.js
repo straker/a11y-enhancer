@@ -8,6 +8,8 @@ let uid = 1;
 /**
  * Implements an accessible accordion menu with proper state and focus support.
  * @see https://www.w3.org/TR/wai-aria-practices/#dialog_modal
+ * @see https://www.youtube.com/watch?v=JS68faEUduk
+ * @see https://ebay.gitbooks.io/mindpatterns/content/disclosure/dialog.html
  *
  * @param {HTMLElement} element - Container element of the accordion.
  * @param {ShadowRoot} [shadfowRoot=element] - Shadow root element if using a custom element with shadow root. Defaults to the container element.
@@ -45,7 +47,7 @@ function dialog(element, shadowRoot) {
 
   // states
   let previousActiveElement;
-  let isOpen = false;
+  element.isOpen = false;
 
   // options
   let type = element.getAttribute('type');
@@ -58,13 +60,6 @@ function dialog(element, shadowRoot) {
 
   // the role could be on the element or one of it's children
   const dialog = (element.getAttribute('role') === 'dialog' ? element : root.querySelector('[role="dialog"]'));
-
-  // move the dialog to be a direct child of body if it's not already. this both resolves any
-  // z-index problems and makes disabling the rest of the page easier (just query selector
-  // everything under body except the dialog)
-  if (element.type === 'modal' && element.parentElement !== document.body) {
-    document.body.appendChild(element);
-  }
 
   // allow the dialog to be focusable when opened
   // @see https://github.com/whatwg/html/issues/1929
@@ -84,39 +79,51 @@ function dialog(element, shadowRoot) {
     }
   }
 
-  // prevent anyone from modifying the public isOpen property
-  Object.defineProperty(element, 'isOpen', {
-    get: function() {
-      return isOpen;
-    }
-  })
-
   // give the element an open and close method that can be called externally
   /**
    * Open the dialog.
    */
   element.open = function() {
-    if (isOpen) return;
+    if (this.isOpen) return;
 
-    isOpen = true;
+    this.isOpen = true;
     previousActiveElement = document.activeElement;
 
-    element.dispatchEvent(new Event('dialog-opened'));
+    this.dispatchEvent(new Event('dialog-opened'));
 
-    if (element.type === 'modal') {
+    if (this.type === 'modal') {
 
       // prevent page from scrolling while open
       document.body.style.overflow = 'hidden';
 
-      // make all siblings of the dialog inert if it's a modal
-      Array.from(document.body.children).forEach(function(child) {
-        if (child !== root) {
-          child.inert = true;
+      // we need to inert every subtree except for the one that contains this dialog
+      // walk up the DOM tree and add inert to all children except for the child
+      // that contains the dialog's tree. save each node we inerted so we don't have
+      // to walk the tree again
+      this._inertedElements = [];
+      let el = this;
+
+      do {
+
+        // an element that is a child of a shadowroot will have a parentNode but not
+        // a parentElement. a shadowroot element has neither but instead has a host
+        let parent = el.parentNode || el.host;
+
+        for (let i = 0, child; (child = parent.children[i]); i++) {
+
+          // by only adding inert to elements that have not been inerted, we can
+          // preserve a11y through stacking modals
+          if (child !== el && !child.inert) {
+            child.inert = true;
+            this._inertedElements.push(child);
+          }
         }
-      });
+
+        el = parent;
+      } while (el !== document.body);
 
       // event listeners
-      element.addEventListener('keydown', checkCloseDialog);
+      this.addEventListener('keydown', checkCloseDialog);
     }
 
     // wait for the dispatch event to run in case a modal is hidden (display: none,
@@ -137,24 +144,23 @@ function dialog(element, shadowRoot) {
    * Close the dialog.
    */
   element.close = function() {
-    if (!isOpen) return;
+    if (!this.isOpen) return;
 
-    isOpen = false;
+    this.isOpen = false;
 
-    element.dispatchEvent(new Event('dialog-closed'));
+    this.dispatchEvent(new Event('dialog-closed'));
 
-    if (element.type === 'modal') {
+    if (this.type === 'modal') {
       document.body.style.overflow = null;
 
-      // uninert all siblings
-      Array.from(document.body.children).forEach(function(child) {
-        if (child !== root) {
-          child.inert = false;
-        }
+      // uninert all nodes
+      this._inertedElements.forEach(function(node) {
+        node.inert = false;
       });
+      this._inertedElements = null;
 
       // remove event listeners
-      element.removeEventListener('keydown', checkCloseDialog);
+      this.removeEventListener('keydown', checkCloseDialog);
     }
 
     // wait for the dispatch event to run in case a modal is hidden (display: none,

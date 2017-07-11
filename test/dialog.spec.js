@@ -72,14 +72,14 @@ describe('dialog', function() {
       dialog = div;
     });
 
-    it('should have show and close functions', function() {
-      expect(typeof dialog.show).to.equal('function');
+    it('should have open and close functions', function() {
+      expect(typeof dialog.open).to.equal('function');
       expect(typeof dialog.close).to.equal('function');
     });
 
-    it('should set the _open property when the dialog is opened', function() {
+    it('should set the isOpen property when the dialog is opened', function() {
       dialog.open();
-      expect(dialog._open).to.be.true;
+      expect(dialog.isOpen).to.be.true;
     });
 
     it('should move focus to the dialog when opened if no element has autofocus', function(done) {
@@ -177,19 +177,6 @@ describe('dialog', function() {
         expect(dialog.type).to.equal('modal');
       });
 
-      it('should move the dialog to the body if not a child of body', function() {
-        let div = document.createElement('div');
-        document.body.appendChild(div);
-        div.appendChild(dialog);
-
-        expect(dialog.parentElement).to.equal(div);
-
-        a11yEnhancer.dialog(dialog);
-        window.dispatchEvent(new Event(''))
-
-        expect(dialog.parentElement).to.equal(document.body);
-      });
-
       it('should add the inert attribute to all siblings when opened and remove it when closed', function() {
         let children = Array.from(document.body.children);
         children.forEach(function(child) {
@@ -218,7 +205,7 @@ describe('dialog', function() {
         event.which = KEYS.esc;
         dialog.dispatchEvent(event);
 
-        expect(dialog._open).to.be.false;
+        expect(dialog.isOpen).to.be.false;
       });
 
       it('should not close the dialog with any key', function() {
@@ -228,7 +215,7 @@ describe('dialog', function() {
         event.which = 1;
         dialog.dispatchEvent(event);
 
-        expect(dialog._open).to.be.true;
+        expect(dialog.isOpen).to.be.true;
       });
 
     });
@@ -282,7 +269,7 @@ describe('dialog', function() {
         event.which = KEYS.esc;
         dialog.dispatchEvent(event);
 
-        expect(dialog._open).to.be.true;
+        expect(dialog.isOpen).to.be.true;
       });
 
     });
@@ -299,7 +286,7 @@ describe('dialog', function() {
       // timeout after 1 second if the event is not triggered
       this.timeout(1000);
 
-      expect(dialog._open).to.be.false;
+      expect(dialog.isOpen).to.be.false;
 
       dialog.addEventListener('dialog-opened', function(e) {
         expect(e.target).to.equal(dialog);
