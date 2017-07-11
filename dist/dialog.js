@@ -158,20 +158,30 @@
       this.dispatchEvent(new Event('dialog-closed'));
 
       if (this.type === 'modal') {
-        document.body.style.overflow = null;
 
-        // uninert all nodes
-        this._inertedElements.forEach(function (node) {
-          node.inert = false;
-        });
-        this._inertedElements = null;
+        // in Safari, removing the overflow style causes a visually delay in the
+        // closing of the modal so we have to wrap it in a set timeout to get it
+        // off the current frame (50ms doesn't seem to be enough)
+        setTimeout(function () {
+          document.body.style.overflow = null;
+        }, 100);
+
+        // in Safari, this also delays the closing animation. however, we don't
+        // want it to run at the same time as the overflow removal as it would
+        // make that frame really slow (50ms seems to be enough in this case)
+        setTimeout(function () {
+          // uninert all nodes
+          this._inertedElements.forEach(function (node) {
+            node.inert = false;
+          });
+          this._inertedElements = null;
+        }.bind(this), 50);
 
         // remove event listeners
         this.removeEventListener('keydown', checkCloseDialog);
       }
 
-      // wait for the dispatch event to run in case a modal is hidden (display: none,
-      // visibility: hidden, inert) as the browser will not focus a hidden element
+      // wait for the inert code to have run before focusing an element
       setTimeout(function (e) {
 
         // focus the previous element
