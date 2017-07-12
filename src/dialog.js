@@ -31,8 +31,14 @@ let uid = 1;
  *
  *    modal-opened - fired on the element when the modal is opened (does not bubble)
  *    modal-closed - fired on the element when the modal is closed (does not bubble)
+ *
+ * Options
+ *
+ *    preventInert - list of elements to not inert when the dialog opens. use this
+ *                   to not inert elements outside the dialog such as a full screen
+ *                   mask
  */
-function dialog(element, shadowRoot) {
+function dialog(element, shadowRoot, options) {
 
   // ensure we are a DOM element and have proper element functions
   if ( !(element instanceof HTMLElement) ) return;
@@ -50,6 +56,9 @@ function dialog(element, shadowRoot) {
   element.isOpen = false;
 
   // options
+  options = options || {};
+  options.preventInert = options.preventInert || [];
+
   let type = element.getAttribute('type');
   if (VALID_TYPES.indexOf(type) !== -1) {
     element.type = type;
@@ -99,7 +108,7 @@ function dialog(element, shadowRoot) {
       // we need to inert every subtree except for the one that contains this dialog
       // walk up the DOM tree and add inert to all children except for the child
       // that contains the dialog's tree. save each node we inerted so we don't have
-      // to walk the tree again
+      // to walk the tree again to uninert nodes
       this._inertedElements = [];
       let el = this;
 
@@ -113,7 +122,8 @@ function dialog(element, shadowRoot) {
 
           // by only adding inert to elements that have not been inerted, we can
           // preserve a11y through stacking modals
-          if (child !== el && !child.inert) {
+          if (child !== el && options.preventInert.indexOf(child) === -1 &&
+              !child.inert) {
             child.inert = true;
             this._inertedElements.push(child);
           }
@@ -152,35 +162,32 @@ function dialog(element, shadowRoot) {
 
     if (this.type === 'modal') {
 
-      // in Safari, removing the overflow style causes a visually delay in the
-      // closing of the modal so we have to wrap it in a set timeout to get it
-      // off the current frame (50ms doesn't seem to be enough)
+      // in Safari, removing the overflow style or uninerting nodes causes a
+      // visually delay in any css animations so we have to wrap it in a set timeout
+      // to get it off the current frame (50ms doesn't seem to be enough)
       setTimeout(function() {
         document.body.style.overflow = null;
-      }, 100);
 
-      // in Safari, this also delays the closing animation. however, we don't
-      // want it to run at the same time as the overflow removal as it would
-      // make that frame really slow (50ms seems to be enough in this case)
-      setTimeout(function() {
         // uninert all nodes
         this._inertedElements.forEach(function(node) {
           node.inert = false;
         });
         this._inertedElements = null;
-      }.bind(this), 50);
+
+        // focus the previous element
+        previousActiveElement.focus();
+        previousActiveElement = null;
+      }.bind(this), 100);
 
       // remove event listeners
       this.removeEventListener('keydown', checkCloseDialog);
     }
-
-    // wait for the inert code to have run before focusing an element
-    setTimeout(function(e) {
+    else {
 
       // focus the previous element
       previousActiveElement.focus();
       previousActiveElement = null;
-    }, 50);
+    }
   };
 
   /**
