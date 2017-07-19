@@ -196,9 +196,7 @@ function dialog(element, shadowRoot) {
    * @param {Event} e
    */
   function checkCloseDialog(e) {
-
-    // check for escape on keydown
-    if (e.type === 'keydown' && e.which === KEYS.esc) {
+    if (e.which === KEYS.esc) {
       element.close();
     }
   }

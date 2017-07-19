@@ -202,9 +202,7 @@
      * @param {Event} e
      */
     function checkCloseDialog(e) {
-
-      // check for escape on keydown
-      if (e.type === 'keydown' && e.which === esc) {
+      if (e.which === esc) {
         element.close();
       }
     }
