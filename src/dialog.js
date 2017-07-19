@@ -31,14 +31,8 @@ let uid = 1;
  *
  *    modal-opened - fired on the element when the modal is opened (does not bubble)
  *    modal-closed - fired on the element when the modal is closed (does not bubble)
- *
- * Options
- *
- *    preventInert - list of elements to not inert when the dialog opens. use this
- *                   to not inert elements outside the dialog such as a full screen
- *                   mask
  */
-function dialog(element, shadowRoot, options) {
+function dialog(element, shadowRoot) {
 
   // ensure we are a DOM element and have proper element functions
   if ( !(element instanceof HTMLElement) ) return;
@@ -53,11 +47,7 @@ function dialog(element, shadowRoot, options) {
 
   // states
   let previousActiveElement;
-  element.isOpen = false;
-
-  // options
-  options = options || {};
-  options.preventInert = options.preventInert || [];
+  element.setAttribute('aria-hidden', true);
 
   let type = element.getAttribute('type');
   if (VALID_TYPES.indexOf(type) !== -1) {
@@ -88,17 +78,18 @@ function dialog(element, shadowRoot, options) {
     }
   }
 
-  // give the element an open and close method that can be called externally
   /**
    * Open the dialog.
    */
   element.open = function() {
-    if (this.isOpen) return;
+    if (!this.hasAttribute('aria-hidden')) return;
 
-    this.isOpen = true;
+    this.removeAttribute('aria-hidden');
     previousActiveElement = document.activeElement;
 
     this.dispatchEvent(new Event('dialog-opened'));
+
+    this.inert = false;
 
     if (this.type === 'modal') {
 
@@ -110,6 +101,7 @@ function dialog(element, shadowRoot, options) {
       // that contains the dialog's tree. save each node we inerted so we don't have
       // to walk the tree again to uninert nodes
       this._inertedElements = [];
+      this._uninertedElements = [];
       let el = this;
 
       do {
@@ -118,12 +110,17 @@ function dialog(element, shadowRoot, options) {
         // a parentElement. a shadowroot element has neither but instead has a host
         let parent = el.parentNode || el.host;
 
+        // if the dialogs subtree has already been inerted, then we need to uninert it
+        if (parent.inert) {
+          parent.inert = false;
+          this._uninertedElements.push(parent);
+        }
+
         for (let i = 0, child; (child = parent.children[i]); i++) {
 
           // by only adding inert to elements that have not been inerted, we can
           // preserve a11y through stacking modals
-          if (child !== el && options.preventInert.indexOf(child) === -1 &&
-              !child.inert) {
+          if ( !(child === el || child.hasAttribute('data-no-inert') || child.inert) ) {
             child.inert = true;
             this._inertedElements.push(child);
           }
@@ -147,16 +144,16 @@ function dialog(element, shadowRoot, options) {
       else {
         dialog.querySelector('[autofocus]').focus();
       }
-    }, 50);
+    }, 100);
   };
 
   /**
    * Close the dialog.
    */
   element.close = function() {
-    if (!this.isOpen) return;
+    if (this.hasAttribute('aria-hidden')) return;
 
-    this.isOpen = false;
+    this.setAttribute('aria-hidden', true);
 
     this.dispatchEvent(new Event('dialog-closed'));
 
@@ -172,7 +169,11 @@ function dialog(element, shadowRoot, options) {
         this._inertedElements.forEach(function(node) {
           node.inert = false;
         });
+        this._uninertedElements.forEach(function(node) {
+          node.inert = true;
+        })
         this._inertedElements = null;
+        this._uninertedElements = null;
 
         // focus the previous element
         previousActiveElement.focus();

@@ -17,10 +17,16 @@ describe('dialog', function() {
     document.body.appendChild(dialog);
   });
 
-  afterEach(function() {
+  afterEach(function(done) {
     dialog.close();
     dialog.remove();
     dialog = null;
+
+    // since inert cleanup is on a setTimeout, we need to wait for it to complete
+    // before moving on with the tests
+    setTimeout(function() {
+      done();
+    }, 150)
   });
 
 
@@ -31,6 +37,10 @@ describe('dialog', function() {
 
     it ('should add tabindex=-1 to the dialog', function() {
       expect(dialog.getAttribute('tabindex')).to.equal('-1');
+    });
+
+    it('should add aria-hidden to the dialog', function() {
+      expect(dialog.hasAttribute('aria-hidden')).to.be.true;
     });
 
     it('should add aria-labelledby to the dialog which points to the first header', function() {
@@ -77,9 +87,9 @@ describe('dialog', function() {
       expect(typeof dialog.close).to.equal('function');
     });
 
-    it('should set the isOpen property when the dialog is opened', function() {
+    it('should remove the aria-hidden attribute when the dialog is opened', function() {
       dialog.open();
-      expect(dialog.isOpen).to.be.true;
+      expect(dialog.hasAttribute('aria-hidden')).to.be.false;
     });
 
     it('should move focus to the dialog when opened if no element has autofocus', function(done) {
@@ -177,7 +187,7 @@ describe('dialog', function() {
         expect(dialog.type).to.equal('modal');
       });
 
-      it('should add the inert attribute to all siblings when opened and remove it when closed', function() {
+      it('should add the inert attribute to all siblings when opened and remove it when closed', function(done) {
         let children = Array.from(document.body.children);
         children.forEach(function(child) {
           expect(child.hasAttribute('inert')).to.be.false;
@@ -193,9 +203,72 @@ describe('dialog', function() {
 
         dialog.close();
 
-        children.forEach(function(child) {
-          expect(child.hasAttribute('inert')).to.be.false;
+        setTimeout(function() {
+          children.forEach(function(child) {
+            expect(child.hasAttribute('inert')).to.be.false;
+          });
+
+          done();
+        }, 200);
+      });
+
+      it('should remove inert from a dialogs subtree when opened and reinert on close', function(done) {
+        var dialog2 = fixtureEl.cloneNode(true);
+        a11yEnhancer.dialog(dialog2);
+
+        var div = document.createElement('div');
+        div.appendChild(dialog2);
+
+        document.body.appendChild(div);
+
+        dialog.open();
+
+        expect(div.hasAttribute('inert')).to.be.true;
+
+        dialog2.open();
+
+        expect(div.hasAttribute('inert')).to.be.false;
+
+        dialog2.close();
+
+        setTimeout(function() {
+          expect(div.hasAttribute('inert')).to.be.true;
+
+          done();
+        }, 200);
+      });
+
+      it('should inert all subtrees except the dialogs and remove it when closed', function(done) {
+        var div = document.createElement('div');
+        div.innerHTML = `
+          <section></section>
+          <section></section>
+          <div>
+            <section></section>
+          </div>`;
+
+        div.querySelector('div').appendChild(dialog);
+        document.body.appendChild(div);
+
+        dialog.open();
+
+        expect(div.hasAttribute('inert')).to.be.false;
+        expect(div.querySelector('div').hasAttribute('inert')).to.be.false;
+        Array.from(div.querySelectorAll('section')).forEach(function(section) {
+          expect(section.hasAttribute('inert')).to.be.true;
         });
+
+        dialog.close();
+
+        setTimeout(function() {
+          expect(div.hasAttribute('inert')).to.be.false;
+          expect(div.querySelector('div').hasAttribute('inert')).to.be.false;
+          Array.from(div.querySelectorAll('section')).forEach(function(section) {
+            expect(section.hasAttribute('inert')).to.be.false;
+          });
+
+          done();
+        }, 200);
       });
 
       it('should close the dialog with the esc key', function() {
@@ -205,7 +278,7 @@ describe('dialog', function() {
         event.which = KEYS.esc;
         dialog.dispatchEvent(event);
 
-        expect(dialog.isOpen).to.be.false;
+        expect(dialog.hasAttribute('aria-hidden')).to.be.true;
       });
 
       it('should not close the dialog with any key', function() {
@@ -215,7 +288,7 @@ describe('dialog', function() {
         event.which = 1;
         dialog.dispatchEvent(event);
 
-        expect(dialog.isOpen).to.be.true;
+        expect(dialog.hasAttribute('aria-hidden')).to.be.false;
       });
 
     });
@@ -269,7 +342,7 @@ describe('dialog', function() {
         event.which = KEYS.esc;
         dialog.dispatchEvent(event);
 
-        expect(dialog.isOpen).to.be.true;
+        expect(dialog.hasAttribute('aria-hidden')).to.be.false;
       });
 
     });
@@ -285,8 +358,6 @@ describe('dialog', function() {
     it('should fire the "dialog-opened" event when the dialog is opened', function(done) {
       // timeout after 1 second if the event is not triggered
       this.timeout(1000);
-
-      expect(dialog.isOpen).to.be.false;
 
       dialog.addEventListener('dialog-opened', function(e) {
         expect(e.target).to.equal(dialog);
