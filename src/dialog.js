@@ -84,12 +84,12 @@ function dialog(element, shadowRoot) {
   element.open = function() {
     if (!this.hasAttribute('aria-hidden')) return;
 
-    this.removeAttribute('aria-hidden');
     previousActiveElement = document.activeElement;
-
-    this.dispatchEvent(new Event('dialog-opened'));
-
     this.inert = false;
+
+    // inert will restore the previous state of aria-hidden (true) so we must
+    // remove the aria-hidden attribute after inert has finished
+    this.removeAttribute('aria-hidden');
 
     if (this.type === 'modal') {
 
@@ -133,6 +133,8 @@ function dialog(element, shadowRoot) {
       this.addEventListener('keydown', checkCloseDialog);
     }
 
+    this.dispatchEvent(new Event('dialog-opened'));
+
     // wait for the dispatch event to run in case a modal is hidden (display: none,
     // visibility: hidden, inert) as the browser will not focus a hidden element
     setTimeout(function(e) {
@@ -154,8 +156,6 @@ function dialog(element, shadowRoot) {
     if (this.hasAttribute('aria-hidden')) return;
 
     this.setAttribute('aria-hidden', true);
-
-    this.dispatchEvent(new Event('dialog-closed'));
 
     if (this.type === 'modal') {
 
@@ -189,6 +189,8 @@ function dialog(element, shadowRoot) {
       previousActiveElement.focus();
       previousActiveElement = null;
     }
+
+    this.dispatchEvent(new Event('dialog-closed'));
   };
 
   /**
