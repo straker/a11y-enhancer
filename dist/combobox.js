@@ -79,7 +79,6 @@
     if (VALID_VALUES.autocomplete.indexOf(OPTIONS.autocomplete) === -1) {
       OPTIONS.autocomplete = VALID_VALUES.autocomplete[0];
     }
-
     // add role and state for the combobox (input field)
     var combobox = root.querySelector('[role="combobox"]');
     combobox.setAttribute('aria-activedescendant', OPTIONS_ID + optionUid);
@@ -93,25 +92,12 @@
     listbox.setAttribute('aria-hidden', true);
     listbox.setAttribute('id', LISTBOX_ID + listboxUid);
 
-    // set role and state for each option
-    var options = Array.from(listbox.children);
-    for (var i = 0, option; option = options[i]; i++) {
-      option.setAttribute('aria-selected', false);
-      option.setAttribute('id', OPTIONS_ID + (optionUid + i));
-      option.setAttribute('role', 'option');
-    }
+    var options = void 0;
+    optionsChanged();
 
-    listboxUid++;
-    optionUid += options.length;
-    currentOption = options[0];
-
-    // if focus wraps, the text field becomes a focusable option
-    if (OPTIONS.wrapFocus) {
-      options.unshift(combobox);
-      currentOptionIndex = 1; // initial focus should be first option in the list
-    }
-
-    lastOptionIndex = options.length - 1;
+    element.toggleListBox = toggleListbox;
+    element.comboboxOptionsChanged = optionsChanged;
+    element.selectComboboxOption = selectOption;
 
     // keyboard events
     root.addEventListener('keydown', function (e) {
@@ -185,11 +171,11 @@
     /**
      * Open the listbox.
      */
-    function toggleListbox() {
+    function toggleListbox(newState) {
       var event = void 0;
 
       // open listbox
-      if (combobox.getAttribute('aria-expanded') === 'false') {
+      if (newState === 'opened' || newState !== 'closed' && combobox.getAttribute('aria-expanded') === 'false') {
         combobox.setAttribute('aria-expanded', true);
         listbox.setAttribute('aria-hidden', false);
 
@@ -204,6 +190,33 @@
         }
 
       root.dispatchEvent(event);
+    }
+
+    function optionsChanged() {
+      // set role and state for each option
+      options = Array.from(listbox.children);
+      for (var i = 0, option; option = options[i]; i++) {
+        option.setAttribute('aria-selected', false);
+        option.setAttribute('id', OPTIONS_ID + (optionUid + i));
+        option.setAttribute('role', 'option');
+      }
+
+      listboxUid++;
+      optionUid += options.length;
+      currentOption = options[0];
+
+      // if focus wraps, the text field becomes a focusable option
+      if (OPTIONS.wrapFocus) {
+        options.unshift(combobox);
+        currentOptionIndex = 1; // initial focus should be first option in the list
+      }
+
+      lastOptionIndex = options.length - 1;
+    }
+
+    function selectOption(index) {
+      currentOptionIndex = index;
+      updateFocusState();
     }
   }
 
